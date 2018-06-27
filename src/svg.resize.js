@@ -212,6 +212,10 @@
                             return;
                         }
 
+                        if (this.options.keepRatio) {
+                            return this.el.move(this.parameters.box.x, this.parameters.box.y + snap[1]).size(this.parameters.box.width + snap[0], this.parameters.box.height - snap[1]);
+                        }
+
                         this.el.move(this.parameters.box.x, this.parameters.box.y + snap[1]).height(this.parameters.box.height - snap[1]);
                     }
                 };
@@ -225,6 +229,10 @@
                     if (this.parameters.box.width + snap[0] > 0) {
                         if (this.parameters.type === "text") {
                             return;
+                        }
+
+                        if (this.options.keepRatio) {
+                            return this.el.move(this.parameters.box.x, this.parameters.box.y).size(this.parameters.box.width + snap[0], this.parameters.box.height + snap[1]);
                         }
 
                         this.el.move(this.parameters.box.x, this.parameters.box.y).width(this.parameters.box.width + snap[0]);
@@ -242,6 +250,10 @@
                             return;
                         }
 
+                        if (this.options.keepRatio) {
+                            return this.el.move(this.parameters.box.x, this.parameters.box.y).size(this.parameters.box.width + snap[0], this.parameters.box.height + snap[1]);
+                        }
+
                         this.el.move(this.parameters.box.x, this.parameters.box.y).height(this.parameters.box.height + snap[1]);
                     }
                 };
@@ -255,6 +267,12 @@
                     if (this.parameters.box.width - snap[0] > 0) {
                         if (this.parameters.type === "text") {
                             return;
+                        }
+
+                        if (this.options.keepRatio) {
+                            return this.el
+                                .move(this.parameters.box.x + snap[0], this.parameters.box.y)
+                                .size(this.parameters.box.width - snap[0], this.parameters.box.height + snap[1]);
                         }
 
                         this.el.move(this.parameters.box.x + snap[0], this.parameters.box.y).width(this.parameters.box.width - snap[0]);
@@ -384,8 +402,36 @@
                   temp[1] :
                   temp[1] - (diffY < 0 ? -this.options.snapToGrid : this.options.snapToGrid));
 
-        return this.constraintToBox(diffX, diffY, flag, pointCoordsY);
+        var snap = this.constraintToBox(diffX, diffY, flag, pointCoordsY);
 
+        if (this.options.keepRatio) {
+            if (flag === 0 || flag === 3) {
+                return this.closestPointonLine({
+                    x: snap[0],
+                    y: snap[1]
+                }, {
+                    x: -this.parameters.box.width,
+                    y: -this.parameters.box.height
+                }, {
+                    x: this.parameters.box.width*1000,
+                    y: this.parameters.box.height*1000
+                })
+            } else if (flag === 1 || flag === 2) {
+                return this.closestPointonLine({
+                    x: snap[0],
+                    y: snap[1]
+                }, {
+                    x: this.parameters.box.width,
+                    y: -this.parameters.box.height
+                }, {
+                    x: -this.parameters.box.width*1000,
+                    y: this.parameters.box.height*1000
+                })
+            }
+            
+        }
+
+        return snap;
     };
 
     // keep element within constrained box
@@ -421,6 +467,19 @@
         return [diffX, diffY];
     };
 
+    ResizeHandler.prototype.closestPointonLine = function ( p, a, b ) {
+        var atop = { x: p.x - a.x, y: p.y - a.y };
+        var atob = { x: b.x - a.x, y: b.y - a.y };
+        var len = atob.x * atob.x + atob.y * atob.y;
+        var dot = atop.x * atob.x + atop.y * atob.y;
+        var t = Math.min( 1, Math.max( 0, dot / len ) );
+        
+        return [
+            a.x + atob.x * t,
+            a.y + atob.y * t
+        ];
+    }
+
     SVG.extend(SVG.Element, {
         // Resize element with mouse
         resize: function (options) {
@@ -436,7 +495,8 @@
     SVG.Element.prototype.resize.defaults = {
         snapToAngle: 0.1,    // Specifies the speed the rotation is happening when moving the mouse
         snapToGrid: 1,       // Snaps to a grid of `snapToGrid` Pixels
-        constraint: {}       // keep element within constrained box
+        constraint: {},       // keep element within constrained box
+        keepRatio: false
     };
 
 }).call(this);
